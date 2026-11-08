@@ -1,0 +1,13 @@
+# Python environments and generated files
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Local datasets, model weights and operating system files
+tensor/dataset/
+*.h5
+*.pt
+*.onnx
+.DS_Store
