@@ -2,7 +2,7 @@ import cv2
 
 from detect_webcam import WEIGHTS, SCORE_THRESHOLD, decode_predictions
 from prepare_dataset import load_dataset, split_dataset
-from tensor_model import create_person_detection
+from model.network import create_person_detection
 
 
 def main():

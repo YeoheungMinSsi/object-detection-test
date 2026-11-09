@@ -5,6 +5,10 @@ from urllib.parse import parse_qs, urlparse
 import xml.etree.ElementTree as ET
 
 
+import cv2
+import numpy as np
+
+
 DATASET = Path(__file__).resolve().parent / "dataset" / "images-label"
 
 
@@ -44,7 +48,7 @@ def load_dataset():
 
         samples.append({"image": image_path, "label": label_path, "boxes": boxes})
 
-    tasks = json.loads((DATASET.parent / "label.json").read_text())
+    tasks = json.loads((DATASET.parent / "labels.json").read_text())
     used_images = {sample["image"] for sample in samples}
     for task in tasks:
         annotations = [a for a in task.get("annotations", []) if not a.get("was_cancelled", False)]
@@ -71,6 +75,63 @@ def split_dataset(samples):
     train_end = int(len(shuffled) * 0.60)
     val_end = train_end + int(len(shuffled) * 0.25)
     return shuffled[:train_end], shuffled[train_end:val_end], shuffled[val_end:]
+
+
+def prepare_samples(samples):
+    images = []
+    boxes = []
+
+    for sample in samples:
+        # 이미지 읽기, image와 xml 중 이미지 만을 가지고 옴
+        image = cv2.imread(str(sample["image"]))
+
+        # 이미지 로드여부 확인
+        if image is None:
+            raise RuntimeError(f"이미지를 읽을 수 없습니다: {sample['image']}")
+
+        # 학습에 사용할 이미지 형태로 변환
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        image = cv2.resize(image, (256, 256))
+        image = image.astype("float32") / 255.0
+
+        # 14×14 그리드의 각 칸에 후보 5개와 후보별 값 5개를 저장
+        target_boxes = np.zeros((14, 14, 5, 5), dtype=np.float32)
+
+        for box in sample["boxes"]:
+            x_min, y_min, x_max, y_max = box
+
+            # 그리드 좌표 계산
+            # 왼쪽 위, 오른쪽 아래 좌표를 중심/크기로 변환
+            center_x = (x_min + x_max) / 2
+            center_y = (y_min + y_max) / 2
+            width = x_max - x_min
+            height = y_max - y_min
+
+            # 사람 중심이 속한 14x14 위치
+            column = min(int(center_x * 14), 13)
+            row = min(int(center_y * 14), 13)
+
+            # 같은 위치의 빈 후보 칸을 찾기
+            for slot in range(5):
+                if target_boxes[row, column, slot, 0] == 0:  # 존재 점수가 0이면 빈 칸
+                    target_boxes[row, column, slot] = [
+                        1.0,  # 존재 점수
+                        center_x * 14 - column,  # 그리드 내 상대 좌표
+                        center_y * 14 - row,  # 그리드 내 상대 좌표
+                        width,
+                        height,
+                    ] 
+                    break
+            else:
+                raise ValueError(
+                        f"한 위치에 사람이 5명보다 많습니다: {sample['image']}"
+                    )
+
+        images.append(image)
+        boxes.append(target_boxes)
+
+    return np.array(images), np.array(boxes)
+
 
 
 if __name__ == "__main__":

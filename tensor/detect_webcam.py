@@ -4,10 +4,10 @@ import cv2
 import numpy as np
 import tensorflow as tf
 
-from tensor_model import create_person_detection
+from model.network import create_person_detection
 
 
-WEIGHTS = Path(__file__).resolve().parent / "person_detector_v2.weights.h5"
+WEIGHTS = Path(__file__).resolve().parent / "person_detector_v3.weights.h5"
 SCORE_THRESHOLD = 0.15
 
 
