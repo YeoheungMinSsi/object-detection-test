@@ -11,8 +11,8 @@ import torch
 from torch.utils.data import DataLoader
 
 from model.network import create_person_detection
-from model.losses import detection_loss, hard_negative_loss
-from metrics import DetectionMetrics
+from .losses import detection_loss, hard_negative_loss
+from .metrics import DetectionMetrics
 from prepare_dataset import load_dataset, split_dataset, PersonDataset
 
 
@@ -114,7 +114,7 @@ def main():
     print(f'학습 {len(train_samples)}, 검증 {len(val_samples)}, 테스트 {len(test_samples)}장', flush=True)
 
     # NOTE: 실행 폴더와 설정 기록 / 가중치를 저장할 새 폴더 정함
-    output = args.output or (Path(__file__).resolve().parent / 'checkpoints' /
+    output = args.output or (Path(__file__).resolve().parent.parent / 'checkpoints' /
                             datetime.now().strftime('%Y%m%d_%H%M%S_%f'))
     # 실행마다 새 폴더를 사용해 이전 가중치를 보존
     output.mkdir(parents=True, exist_ok=False)  # 이미 같은 폴더가 있으면 덮어쓰기 막음

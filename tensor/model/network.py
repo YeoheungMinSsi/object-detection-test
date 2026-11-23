@@ -3,24 +3,31 @@ from tensorflow.keras import layers
 
 
 def create_person_detection():
-    inputs = tf.keras.Input(shape=(256, 256, 3))
+    inputs = tf.keras.Input(shape=(512, 512, 3))
 
-    # 이미지 특징 추출 cnn
+    # 이미지 특징 추출 cnn 255
     x = layers.Conv2D(32, 3, activation='relu')(inputs)  # 커널수, 커널 크기
     x = layers.Conv2D(32, 3, padding='same', activation='relu')(x)
     x = layers.MaxPooling2D(pool_size=2)(x)
 
+    # 이미지 특징 추출 cnn 126
     x = layers.Conv2D(64, 3, activation='relu')(x)
     x = layers.Conv2D(64, 3, padding='same', activation='relu')(x)
     x = layers.Conv2D(64, 3, padding='same', activation='relu')(x)
     x = layers.MaxPooling2D(pool_size=2)(x)
 
+    # 이미지 특징 추출 cnn 62
     x = layers.Conv2D(128, 3, activation='relu')(x)
+    x = layers.Conv2D(128, 3, padding='same', activation='relu')(x)
     x = layers.Conv2D(128, 3, padding='same', activation='relu')(x)
     x = layers.MaxPooling2D(pool_size=2)(x)
 
+    # 이미지 특징 추출 cnn 30
     x = layers.Conv2D(256, 3, activation='relu')(x)
+    x = layers.Conv2D(256, 3, padding='same', activation='relu')(x)
     x = layers.MaxPooling2D(pool_size=2)(x)
+
+    x = layers.Conv2D(512, 3, padding='same', activation='relu')(x)
 
     # 드롭아웃
     x = layers.Dropout(0.2)(x)  # 학습 중 이 층의 출력값 20%를 무작위로 끔
@@ -33,7 +40,7 @@ def create_person_detection():
         name="person_predictions",
     )(x)
 
-    outputs = layers.Reshape((14, 14, 5, 5))(x)
+    outputs = layers.Reshape((30, 30, 5, 5))(x)
 
     return tf.keras.Model(inputs=inputs, outputs=outputs)
 

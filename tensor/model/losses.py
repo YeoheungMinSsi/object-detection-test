@@ -7,16 +7,31 @@ def detection_loss(y_true, y_pred):
     true_objectness = y_true[..., 0]
     pred_objectness = y_pred[..., 0]
 
-    # 사람이 있는지 없는지에 대한 오차
+    # 각 후보간에 사람이 있는지 없는지에 대한 오차
     objectness_loss = tf.keras.backend.binary_crossentropy(
         true_objectness,
         pred_objectness,
     )
 
-    # 사람이 있는 칸에 더 큰 비중을 둠
-    # 비어 있는 칸이 훨씬 많기 때문
-    weights = 1.0 + true_objectness * 9.0
-    objectness_loss = tf.reduce_mean(objectness_loss * weights)
+    # 사람 후보 1, 배경 후보 0
+    person_mask = true_objectness
+    # 배경 후보 1, 사람 후보 0
+    background_mask = 1.0 - true_objectness  # 사람 후보 확률에서 1을 빼면 배경 후보 확률이 됨
+
+    # 사람 후보의 오차만 평균 계산
+    person_loss = tf.math.divide_no_nan(
+        tf.reduce_sum(objectness_loss * person_mask),
+        tf.reduce_sum(person_mask),
+    )
+
+    # 배경 후보의 오차만 평균 계산
+    background_loss = tf.math.divide_no_nan(
+        tf.reduce_sum(objectness_loss * background_mask),
+        tf.reduce_sum(background_mask),
+    )
+
+    # 오차 평균 합
+    objectness_loss = person_loss + background_loss
 
     # 사람이 있는 칸에서만 사각형 위치 오차 계산
     true_boxes = y_true[..., 1:5]
@@ -27,9 +42,10 @@ def detection_loss(y_true, y_pred):
         axis=-1,
     )
 
-    box_loss = tf.reduce_sum(box_error * true_objectness) / (
-        tf.reduce_sum(true_objectness) + 1e-7
+    box_loss = tf.math.divide_no_nan(
+        tf.reduce_sum(box_error * person_mask),
+        tf.reduce_sum(person_mask),
     )
 
+    # 학습에 사용할 최종 손실
     return objectness_loss + box_loss
-

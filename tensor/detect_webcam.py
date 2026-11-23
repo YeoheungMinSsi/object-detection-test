@@ -51,7 +51,7 @@ def main():
 
             frame = cv2.flip(frame, 1)
             rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            image = cv2.resize(rgb, (256, 256)).astype("float32") / 255.0
+            image = cv2.resize(rgb, (512, 512)).astype("float32") / 255.0
             predictions = model(image[None, ...], training=False).numpy()[0]
             boxes, scores = decode_predictions(predictions, threshold)
 

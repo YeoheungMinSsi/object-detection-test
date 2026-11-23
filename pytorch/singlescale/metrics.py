@@ -1,6 +1,6 @@
 """고정 score/NMS/매칭 IoU에서 이미지별 일대일 매칭 검출 지표."""
 import torch
-from predict import decode_predictions
+from .predict import decode_predictions
 
 
 def match_counts(boxes, scores, truth, iou_threshold=0.5):

@@ -11,11 +11,11 @@ import numpy as np
 import torch
 
 from model.network import create_person_detection
-from model.losses import detection_loss
+from .losses import detection_loss
 from prepare_dataset import load_dataset, PersonDataset
-from predict import decode_predictions, read_image
-from test_model import annotate, loss_parts
-from train import save_checkpoint
+from .predict import decode_predictions, read_image
+from .test_model import annotate, loss_parts
+from .train import save_checkpoint
 
 
 def save_image(path, image):
@@ -142,7 +142,7 @@ def memorize(samples, output, args):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('mode', choices=('coordinates', 'memorize'))
-    parser.add_argument('--dataset', type=Path, default=Path(__file__).resolve().parent / 'dataset/new_images')
+    parser.add_argument('--dataset', type=Path, default=Path(__file__).resolve().parent.parent / 'dataset/new_images')
     parser.add_argument('--count', type=int, default=1, help='암기 검사 이미지 수: 1~5')
     parser.add_argument('--epochs', type=int, default=300)
     parser.add_argument('--lr', type=float, default=1e-4)
@@ -156,7 +156,7 @@ def main():
         parser.error('lr는 양수, score는 0~1이어야 합니다.')
     torch.manual_seed(42)
     samples = load_dataset(args.dataset)
-    output = args.output or (Path(__file__).resolve().parent / 'diagnostics' /
+    output = args.output or (Path(__file__).resolve().parent.parent / 'diagnostics' /
                             f'{args.mode}_{datetime.now():%Y%m%d_%H%M%S_%f}')
     output.mkdir(parents=True, exist_ok=False)
     print('Output:', output, flush=True)

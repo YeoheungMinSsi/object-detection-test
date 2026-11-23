@@ -6,22 +6,28 @@ from torch.nn import functional as F
 class ConvBlock(nn.Module):
     """합성곱 → 배치 정규화 → SiLU."""
 
+    # 입력 특징 맵의 채널수, 출력 특징 맵의 채널수, 커널 크기, 스프라이드 크기
     def __init__(self, in_channels, out_channels, kernel_size=3, stride=1):
         super().__init__()
 
-        self.block = nn.Sequential(
+        # block 초기화
+        self.block = nn.Sequential(  # Sequential은 여러 층을 순서대로 실행해 주는 묶음 (레이어, 배치정규, 활성화 함수)
             nn.Conv2d(
                 in_channels,
                 out_channels,
                 kernel_size=kernel_size,
                 stride=stride,
-                padding=kernel_size // 2,
+                padding=kernel_size // 2,  # 패딩: 커널//2 = 1 (w, h의 크기가 변동되지 않음)
                 bias=False,
             ),
-            nn.BatchNorm2d(out_channels),
-            nn.SiLU(inplace=True),
+            # 채널마다 배치와 공간 위치의 값을 사용해 정규화
+            # 학습에서는 현재 입력의 통게로 정규화하고 이동 통계를 갱신, 평가에서는 저장된 이동 통계를 사용
+            nn.BatchNorm2d(out_channels),  
+            # 활성화 함수: 음수 값을 모두 잘라내는 대신 부드럽게 조절
+            nn.SiLU(inplace=True),  
         )
 
+    # 위 레이어 수행
     def forward(self, x):
         return self.block(x)
 

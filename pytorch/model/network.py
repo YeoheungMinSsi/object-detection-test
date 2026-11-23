@@ -36,7 +36,6 @@ class PersonDetector(nn.Module):
             )
 
         # 높이/너비가 64이상이고 32 배수인지 확인 -> 반복 축소와 Neck의 특징 결합에서 공간 크기가 맞도록 제한
-        # 반드시 정사각형일 필요는 없음
         height, width = images.shape[-2:]
         if min(height, width) < 64 or height % 32 or width % 32:
             raise ValueError(
@@ -56,16 +55,9 @@ class PersonDetector(nn.Module):
             "medium": self.medium_head(n4),
             "large": self.large_head(n5),
         }
-        # ex) 아래에서 채널 5는 [사람 존재 logit, 중심 x 보정값, 중심 y 보정값, 너비 값, 높이 값]
-        # small:  (배치, 5, 64, 64)
-        # medium: (배치, 5, 32, 32)
-        # large:  (배치, 5, 16, 16)
-
-
 
 def create_person_detection():
     return PersonDetector()
-
 
 if __name__ == "__main__":
     # gpu가 있으면 사용하고 평가 모드로 바꿈

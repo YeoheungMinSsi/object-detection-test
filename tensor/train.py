@@ -37,7 +37,7 @@ if __name__ == "__main__":
 
     # 학습 방법 설정
     model.compile(
-        optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001),
+        optimizer=tf.keras.optimizers.Adam(learning_rate=0.01),
         loss=detection_loss,
     )
 
@@ -55,8 +55,8 @@ if __name__ == "__main__":
         train_images,
         train_targets,
         validation_data=(val_images, val_targets),
-        epochs=80,
-        batch_size=10,
+        epochs=20,
+        batch_size=8,
         callbacks=[early_stopping],
     )
 

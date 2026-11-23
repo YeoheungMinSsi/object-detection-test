@@ -8,31 +8,25 @@ class Backbone(nn.Module):
 
     def __init__(self):
         super().__init__()
-
-        # 이미지의 3채널을 32채널 특징으로 변환, stride로 인해 특징 맵이 입력 이미지에서 n/2(stride=2) 줄어듦
-        # 입력 (배치, 3채널, 높이, 넓이) -> 출력 (배치, 32채널, 높이, 넓이)
         self.stem = ConvBlock(3, 32, stride=2)
 
-        
         self.stage2 = nn.Sequential(
             # 32채널 -> 64채널,  256x256 ->(stride=2)-> 128x128
             ConvBlock(32, 64, stride=2),
-            # 64채널과 특징맵 크기를 유지하면서 특징 처리 / repeats는 블록 내부의 ResidualBlock(잔차블록)을 한번 사용
-            # ResidualBlock: 입력 데이터를 여러 층을 통과시킨 출력(F(x))에 원래 입력을 그대로 더하는 잔차 구조/ H(x) = F(x) + x
-            FusionBlock(64, 64, repeats=1),
+            FusionBlock(64, 64, repeats=2),
         )
 
         self.stage3 = nn.Sequential(
             # 64채널 -> 128채널,  128x128 ->(stride=2)-> 64x64
             ConvBlock(64, 128, stride=2),
-            # 잔차블록 2번 반복 -> 두 번 쌓으면 공간 크기 유지, 더많은 연산으로 특징 조합, 더 넓은 주변 정보 반영 가능
-            FusionBlock(128, 128, repeats=2),
+            # 잔차블록 2번 반복
+            FusionBlock(128, 128, repeats=4),
         )
 
         self.stage4 = nn.Sequential(
             # 128채널 -> 256채널,  64x64 ->(stride=2)-> 32x32
             ConvBlock(128, 256, stride=2),
-            FusionBlock(256, 256, repeats=2),
+            FusionBlock(256, 256, repeats=3),
         )
 
         self.stage5 = nn.Sequential(
@@ -54,7 +48,3 @@ class Backbone(nn.Module):
         c5 = self.stage5(c4)  # 입력 이미지(c4): 채널 256, 32x32 -> 출력(c5): 512채널, n/2 ->  32/2 = 16x16
 
         return c3, c4, c5
-
-# fusionblock 초반 1번 -> 특징 맵이 너무 커서 블록을 늘리면 계산 비용이 너무 큼
-# fusionblock 중반 2번 -> 위치 정보와 복합적인 특징을 함께 다뤄 처리 깊이를 확보
-# fusionblock 마지막 1번 -> 채널이 많고 공간 정보를 결합하는 풀링 블록이 있어 1번으로 제한

@@ -11,7 +11,7 @@ import torch
 import torch.nn.functional as F
 
 from prepare_dataset import load_dataset, prepare_samples
-from predict import load_model, read_image, image_tensor, decode_predictions
+from .predict import load_model, read_image, image_tensor, decode_predictions
 
 
 def loss_parts(target, prediction):

@@ -91,11 +91,11 @@ def prepare_samples(samples):
 
         # 학습에 사용할 이미지 형태로 변환
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        image = cv2.resize(image, (256, 256))
+        image = cv2.resize(image, (512, 512))
         image = image.astype("float32") / 255.0
 
-        # 14×14 그리드의 각 칸에 후보 5개와 후보별 값 5개를 저장
-        target_boxes = np.zeros((14, 14, 5, 5), dtype=np.float32)
+        # 30×30 그리드의 각 칸에 후보 5개와 후보별 값 5개를 저장
+        target_boxes = np.zeros((30, 30, 5, 5), dtype=np.float32)
 
         for box in sample["boxes"]:
             x_min, y_min, x_max, y_max = box
@@ -107,17 +107,17 @@ def prepare_samples(samples):
             width = x_max - x_min
             height = y_max - y_min
 
-            # 사람 중심이 속한 14x14 위치
-            column = min(int(center_x * 14), 13)
-            row = min(int(center_y * 14), 13)
+            # 사람 중심이 속한 30x30 위치
+            column = min(int(center_x * 30), 29)
+            row = min(int(center_y * 30), 29)
 
             # 같은 위치의 빈 후보 칸을 찾기
             for slot in range(5):
                 if target_boxes[row, column, slot, 0] == 0:  # 존재 점수가 0이면 빈 칸
                     target_boxes[row, column, slot] = [
                         1.0,  # 존재 점수
-                        center_x * 14 - column,  # 그리드 내 상대 좌표
-                        center_y * 14 - row,  # 그리드 내 상대 좌표
+                        center_x * 30 - column,  # 그리드 내 상대 좌표
+                        center_y * 30 - row,  # 그리드 내 상대 좌표
                         width,
                         height,
                     ] 

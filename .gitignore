@@ -8,8 +8,12 @@ __pycache__/
 .env.*
 !.env.example
 
-# Local datasets, model weights and operating system files
+# Local datasets, checkpoints, diagnostics, model weights and operating system files
 tensor/dataset/
+pytorch/dataset/
+pytorch/checkpoints/
+pytorch/checkpoints_multiscale/
+pytorch/diagnostics/
 *.h5
 *.pt
 *.onnx

@@ -24,7 +24,7 @@ def main():
 
             height, width = image.shape[:2]
             rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-            input_image = cv2.resize(rgb, (256, 256)).astype("float32") / 255.0
+            input_image = cv2.resize(rgb, (512, 512)).astype("float32") / 255.0
             predictions = model(input_image[None, ...], training=False).numpy()[0]
             boxes, scores = decode_predictions(predictions, SCORE_THRESHOLD)
 
