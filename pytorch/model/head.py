@@ -8,26 +8,26 @@ class DetectionHead(nn.Module):
     """사람 존재 점수와 박스 좌표를 별도 경로에서 예측한다."""
 
     # in_chennels: Neck에서 들어오는 채널 수, hidden: Head 내부에서 사용할 채널 수(기본 128)
-    def __init__(self, in_channels, hidden_channels=128):
+    def __init__(self, in_channels, hidden_channels=128, norm="bn"):
         super().__init__()
 
         # neck에서 p3(x, 128, 64, 64), n4(x, 256, 32, 32), n5(x, 512, 16, 16)가 들어옴
         # stem: (neck에서 들어오는 채널 수, 128, 커널 사이즈 1) -> NOTE: 들어오는 모든 채널을 128로 만듦(ConvBlock)
         self.stem = ConvBlock(
-            in_channels, hidden_channels, kernel_size=1
+            in_channels, hidden_channels, kernel_size=1, norm=norm
         )
 
         # 객체/사람(objectness_branch)이 있는지 판단하기 위한 특징 가공
         self.objectness_branch = nn.Sequential(
-            ConvBlock(hidden_channels, hidden_channels),  # 첫번째 필터로 특징 가공(3x3 필터 사용)->패딩이 1이라 특징맵이 줄어들지 않음
-            ConvBlock(hidden_channels, hidden_channels),  # 다른 필터로 한 번 더 가공
+            ConvBlock(hidden_channels, hidden_channels, norm=norm),  # 첫번째 필터로 특징 가공(3x3 필터 사용)->패딩이 1이라 특징맵이 줄어들지 않음
+            ConvBlock(hidden_channels, hidden_channels, norm=norm),  # 다른 필터로 한 번 더 가공
             nn.Dropout2d(p=0.1)
         )
 
         # 박스(objectness_branch)의 위치, 크기를 예측하기 위한 특징 가공
         self.box_branch = nn.Sequential(
-            ConvBlock(hidden_channels, hidden_channels),  # 첫번째 필터로 특징 가공(3x3 필터 사용)
-            ConvBlock(hidden_channels, hidden_channels),  # 다른 필터로 한 번 더 가공
+            ConvBlock(hidden_channels, hidden_channels, norm=norm),  # 첫번째 필터로 특징 가공(3x3 필터 사용)
+            ConvBlock(hidden_channels, hidden_channels, norm=norm),  # 다른 필터로 한 번 더 가공
         )
 
         # 객체/사람: (x, 채널 번호, 너비, 높이), 채널 번호 위치에 1(채널이 단 하나)로 지정했으니 0부터 카운트하니 0이 됌

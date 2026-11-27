@@ -41,7 +41,8 @@
 - 0이면 조기종료 없음, n - 학습중 학습이 진행되지 않을 때 종료할 count 순
 
 12. monitor
-
+- 평가 지표
+- f1, val_loss
 
 13. limit
 14. augment

@@ -65,7 +65,8 @@ def main():
     samples, _ = load_manifest_samples(args.weights, args.split, args.dataset)
     if args.limit:
         samples = samples[:args.limit]
-    model = create_person_detection().to(device)
+    # 수정된 부분(norm 추가 / 26.11.23)
+    model = create_person_detection(norm=checkpoint.get('norm', 'bn')).to(device)
     model.load_state_dict(checkpoint['model_state_dict'], strict=True)
     model.eval()
     output = args.output or (args.weights.resolve().parent/'inspection'/

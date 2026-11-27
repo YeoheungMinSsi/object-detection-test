@@ -2,6 +2,17 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
+# 어떤 정규화 레이어를 사용하지 결정하는 스위치(문자열 옵션) / gn또는 bn
+# Conv2d를 여러 번 거치면서 출력 숫자들이 너무 커지거나 작아져 학습이 불안정해지는데,
+# 정규화를 통해 각 층의 출력 분포를 평균 0, 분산1 근처로 고리게 맞추는 역할
+def make_norm(norm, channels):  # norm 값에 따라 아래 둘 중 하나를 선택해 ConvBlock에 넣음
+    # gn: nn.BatchNorm2d 배치에 들어온 여러 이미지를 함께 묶어 채널별로 평균/분산을 계산해 정규화
+    # bn: nn.GroupNorm 배치 크기와 무관하게 이미지 1장에서 채널을 8개 그룹으로 나눠 정규화(배치 크기가 7처럼 작을 때 통계가 흔들리지 않아 유리)
+    if norm == "gn":
+        # 채널을 8개 그룹으로 나눠 정규화 (8로 안 나누어떨어지면 1그룹)
+        groups = 8 if channels % 8 == 0 else 1
+        return nn.GroupNorm(groups, channels)
+    return nn.BatchNorm2d(channels)
 
 class ConvBlock(nn.Module):
     """합성곱 → 배치 정규화 → SiLU."""

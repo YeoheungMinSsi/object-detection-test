@@ -61,6 +61,34 @@ class PersonDataset(Dataset):
                 # [;, 0]는 모든 사람의 xmin, [;, 2]는 모든 사람의 xmax를 뜻함
                 # ex) 기존x 범위: 0.1 ~ 0.4 -> 반전 x 범위: 0.6~0.9
 
+            # 데이터 증강 추가(무작위 크롭 / 확대- 50% 확률 / 2026.11.24)
+            if random.random() < 0.5:
+                h, w = image.shape[:2]
+                scale = random.uniform(0.6, 1.0)  # 원본의 60~100% 크기로 잘라냄
+                new_h, new_w = int(h * scale), int(w * scale)
+                top = random.randint(0, h - new_h)
+                left = random.randint(0, w - new_w)
+                # 잘라낸 영역의 정규화 좌표 (0~1)
+                x1_crop, y1_crop = left / w, top / h
+                x2_crop, y2_crop = (left + new_w) / w, (top + new_h) / h
+                if len(boxes) > 0:
+                    # 박스 좌표를 잘라낸 이미지 기준으로 변환
+                    cropped_boxes = boxes.clone()
+                    cropped_boxes[:, [0, 2]] = (cropped_boxes[:, [0, 2]] - x1_crop) / (x2_crop - x1_crop)
+                    cropped_boxes[:, [1, 3]] = (cropped_boxes[:, [1, 3]] - y1_crop) / (y2_crop - y1_crop)
+                    cropped_boxes = cropped_boxes.clamp(0.0, 1.0)
+                    # 화면 밖으로 나가 너무 작아진 박스 제거 (너비/높이 2% 초과만 유지)
+                    bw = cropped_boxes[:, 2] - cropped_boxes[:, 0]
+                    bh = cropped_boxes[:, 3] - cropped_boxes[:, 1]
+                    keep = (bw > 0.02) & (bh > 0.02)
+                    # 사람이 최소 1명 이상 남아 있을 때만 크롭 적용
+                    if keep.any():
+                        image = image[top:top + new_h, left:left + new_w]
+                        boxes = cropped_boxes[keep]
+                else:
+                    image = image[top:top + new_h, left:left + new_w]
+
+
             # 데이터 증강(대비, 밝기)
             # 기존 값에서 대비기준(기존 값 x 0.8 ~ 1.2), 밝기기준(기존 값 x -20 ~ 20)
             contrast, brightness = random.uniform(0.8, 1.2), random.uniform(-20, 20) # contrast: 대비, brigthness: 밝기

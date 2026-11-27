@@ -9,22 +9,22 @@ from .blocks import ConvBlock, FusionBlock
 class Neck(nn.Module):
     """여러 해상도의 특징을 양방향으로 결합한다."""
 
-    def __init__(self):
+    def __init__(self, norm="bn"):
         super().__init__()
 
         # 512채널 -> 256채널 / 1x1합성곱으로 채널 수를 줄임(공간 크기는 유지)
-        self.reduce5 = ConvBlock(512, 256, kernel_size=1) 
-        self.fuse4 = FusionBlock(256 + 256, 256)  # 두 특징을 채널 방향으로 붙여서 가공 2특징 256 + 256 -> 256채널
+        self.reduce5 = ConvBlock(512, 256, kernel_size=1, norm=norm) 
+        self.fuse4 = FusionBlock(256 + 256, 256, norm=norm)   # 두 특징을 채널 방향으로 붙여서 가공 2특징 256 + 256 -> 256채널
 
-        self.reduce4 = ConvBlock(256, 128, kernel_size=1)
-        self.fuse3 = FusionBlock(128 + 128, 128)
+        self.reduce4 = ConvBlock(256, 128, kernel_size=1, norm=norm) 
+        self.fuse3 = FusionBlock(128 + 128, 128, norm=norm) 
 
         # 128채널 -> 256채널 / stride=2로 공간 크기를 n/2, 즉 1/2로 줄임 
-        self.down3 = ConvBlock(128, 256, stride=2)
-        self.pan4 = FusionBlock(256 + 256, 256)
+        self.down3 = ConvBlock(128, 256, stride=2, norm=norm) 
+        self.pan4 = FusionBlock(256 + 256, 256, norm=norm) 
 
-        self.down4 = ConvBlock(256, 512, stride=2)
-        self.pan5 = FusionBlock(512 + 512, 512)
+        self.down4 = ConvBlock(256, 512, stride=2, norm=norm) 
+        self.pan5 = FusionBlock(512 + 512, 512, norm=norm) 
 
     def forward(self, c3, c4, c5):
         # NOTE: Top-down(특징 맵 키우기)

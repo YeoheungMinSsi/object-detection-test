@@ -15,16 +15,16 @@ class PersonDetector(nn.Module):
     }
 
 
-    def __init__(self):
+    def __init__(self, norm="bn"):
         super().__init__()
 
-        self.backbone = Backbone()  # 이미지 특징 추출
-        self.neck = Neck()  # 서로 다른 해상도 특징 결합
+        self.backbone = Backbone(norm=norm)  # 이미지 특징 추출
+        self.neck = Neck(norm=norm)  # 서로 다른 해상도 특징 결합
         
         # 각 숫자는 입력 이미지 채널 수(이미지 크기 x) -> head에 들어가면 stem에서 각 채널 수가 128로 변경
-        self.small_head = DetectionHead(128)
-        self.medium_head = DetectionHead(256)
-        self.large_head = DetectionHead(512)
+        self.small_head = DetectionHead(128, norm=norm)
+        self.medium_head = DetectionHead(256, norm=norm)
+        self.large_head = DetectionHead(512, norm=norm)
 
     # forward를 먼저 실행
     def forward(self, images):
@@ -56,8 +56,8 @@ class PersonDetector(nn.Module):
             "large": self.large_head(n5),
         }
 
-def create_person_detection():
-    return PersonDetector()
+def create_person_detection(norm="bn"):
+    return PersonDetector(norm=norm)
 
 if __name__ == "__main__":
     # gpu가 있으면 사용하고 평가 모드로 바꿈

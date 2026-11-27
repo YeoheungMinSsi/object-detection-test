@@ -6,36 +6,36 @@ from .blocks import ConvBlock, FusionBlock, SpatialPyramidPooling
 class Backbone(nn.Module):
     """이미지에서 세 가지 해상도의 특징을 추출한다."""
 
-    def __init__(self):
+    def __init__(self, norm="bn"):
         super().__init__()
-        self.stem = ConvBlock(3, 32, stride=2)
+        self.stem = ConvBlock(3, 32, stride=2, norm=norm)
 
         self.stage2 = nn.Sequential(
             # 32채널 -> 64채널,  256x256 ->(stride=2)-> 128x128
-            ConvBlock(32, 64, stride=2),
-            FusionBlock(64, 64, repeats=2),
+            ConvBlock(32, 64, stride=2, norm=norm),
+            FusionBlock(64, 64, repeats=2, norm=norm),
         )
 
         self.stage3 = nn.Sequential(
             # 64채널 -> 128채널,  128x128 ->(stride=2)-> 64x64
-            ConvBlock(64, 128, stride=2),
+            ConvBlock(64, 128, stride=2, norm=norm),
             # 잔차블록 2번 반복
-            FusionBlock(128, 128, repeats=4),
+            FusionBlock(128, 128, repeats=4, norm=norm),
         )
 
         self.stage4 = nn.Sequential(
             # 128채널 -> 256채널,  64x64 ->(stride=2)-> 32x32
-            ConvBlock(128, 256, stride=2),
-            FusionBlock(256, 256, repeats=3),
+            ConvBlock(128, 256, stride=2, norm=norm),
+            FusionBlock(256, 256, repeats=3, norm=norm),
         )
 
         self.stage5 = nn.Sequential(
             # 256채널 -> 512채널,  32x32 ->(stride=2)-> 16x16 / 특징맵: 512채널과 16x16
-            ConvBlock(256, 512, stride=2),
-            FusionBlock(512, 512, repeats=1),
+            ConvBlock(256, 512, stride=2, norm=norm),
+            FusionBlock(512, 512, repeats=1, norm=norm),
             # 같은 특징에 풀링을 연속 적용한 결과들을 합쳐 주변 정보를 보완 / 최종 공간 크기(16x16) 유지
             # SpatialPyramidPooling(SPP): 입력 이미지나 특징 맵의 크기가 어떻든 항상 고정된 크기의 벡터를 출력하는 풀링 기법
-            SpatialPyramidPooling(512),
+            SpatialPyramidPooling(512, norm=norm),
         )
 
 

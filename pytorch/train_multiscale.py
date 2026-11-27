@@ -26,7 +26,7 @@ def save_checkpoint(path, model, optimizer, epoch, losses, metrics, args):
                     image_size=args.image_size, strides=STRIDES,
                     decode='sigmoid_xy_softplus_wh', val_losses=losses,
                     metrics=metrics, score=args.score, nms_iou=args.nms_iou,
-                    match_iou=args.match_iou), temporary)
+                    match_iou=args.match_iou, norm=args.norm), temporary)
     temporary.replace(path)
 
 
@@ -69,20 +69,26 @@ def main():
     parser.add_argument('--dataset', type=Path, default=root/'dataset/new_images')
     parser.add_argument('--epochs', type=int, default=100)
     parser.add_argument('--batch-size', type=int, default=8)
-    parser.add_argument('--image-size', type=int, default=720)
+    parser.add_argument('--image-size', type=int, default=800)
     parser.add_argument('--lr', type=float, default=3e-4)  #1e-4
     parser.add_argument('--weight-decay', type=float, default=0.005)  # 초기 1e-4, AdamW가 가중치 크기를 억제하는 정도(높이면, 규제가 강해짐, 학습 방해 가능성 있음)
-    parser.add_argument('--background-weight', type=float, default=1.0)  # 배경 손실, 배경을 사람으로 잘못 판단한 오차를 전체 손실에 반영하는 값(높이면 배경 오검출을 줄이는 쪽, 사람의 점수도 낮아질 수 있음)
+    parser.add_argument('--background-weight', type=float, default=1.15)  # 배경 손실, 배경을 사람으로 잘못 판단한 오차를 전체 손실에 반영하는 값(높이면 배경 오검출을 줄이는 쪽, 사람의 점수도 낮아질 수 있음)
     parser.add_argument('--box-weight', type=float, default=3.0)  # 초기 5.0, 전체 손실에서 박스 위치,크기 오차에 주는 가중치, (높이면 박스를 정확하게 맞추는 오차를 더 중요하게 반영)
-    parser.add_argument('--score', type=float, default=0.75)  # 초기 0.5, 사람 후보를 남길 최소 예측 점수, (높이면, 박스가 줄지만, 사람을 더 놓칠 수 있음)
-    parser.add_argument('--nms-iou', type=float, default=0.35)  # 초기 0.5, 예측끼리 중복 박스를 제거하는 겹침 기준, (높이면, 더 많이 겹쳐야 제거하므로, 박스가 더 많이 남을 수 있음)
+    parser.add_argument('--score', type=float, default=0.59)  # 초기 0.5, 사람 후보를 남길 최소 예측 점수, (높이면, 박스가 줄지만, 사람을 더 놓칠 수 있음)
+    parser.add_argument('--nms-iou', type=float, default=0.44)  # 초기 0.5, 예측끼리 중복 박스를 제거하는 겹침 기준, (높이면, 더 많이 겹쳐야 제거하므로, 박스가 더 많이 남을 수 있음)
     parser.add_argument('--match-iou', type=float, default=0.50)  # 초기 0.5, 예측과 정답이 일치했다고 인정할 겹침 기준, (높이면 박스 위치가 더 정확해야 정답 인정)
-    parser.add_argument('--patience', type=int, default=70, help='0이면 조기 종료 해제')
+    parser.add_argument('--patience', type=int, default=50, help='0이면 조기 종료 해제')
     parser.add_argument('--monitor', choices=('f1', 'val_loss'), default='f1')
     parser.add_argument('--limit', type=int, default=0)
     parser.add_argument('--augment', action='store_true', help='학습에만 수평 뒤집기/밝기/대비 적용')
     parser.add_argument('--cpu', action='store_true')
     parser.add_argument('--output', type=Path)
+    # 추가된 옵션
+    parser.add_argument('--norm', choices=('bn', 'gn'), default='gn')
+    parser.add_argument('--box-loss', choices=('giou', 'ciou'), default='ciou')
+    parser.add_argument('--obj-loss', choices=('bce', 'focal'), default='bce')
+    # 학습률 스케줄러 추가(scheduler / 2026.11.24)
+    parser.add_argument('--scheduler', choices=('none', 'cosine'), default='cosine')
     args = parser.parse_args()
     if min(args.epochs, args.batch_size) < 1 or args.limit < 0 or args.patience < 0:
         parser.error('epochs/batch-size는 양수, limit/patience는 0 이상이어야 합니다.')
@@ -119,10 +125,35 @@ def main():
                               batch_size=args.batch_size, shuffle=True, num_workers=0, collate_fn=collate_samples)
     val_loader = DataLoader(PersonDataset(val, args.image_size), batch_size=args.batch_size,
                             shuffle=False, num_workers=0, collate_fn=collate_samples)
-    model = create_person_detection().to(device)
-    criterion = DetectionLoss(args.box_weight, args.background_weight)
+    # 수정된 부분(norm, box_loss, obj_loss 추가 / 26.11.23)
+    model = create_person_detection(norm=args.norm).to(device)
+    criterion = DetectionLoss(
+        args.box_weight, 
+        args.background_weight,
+        box_loss = args.box_loss,
+        obj_loss=args.obj_loss
+    )
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr,
                                   weight_decay=args.weight_decay, eps=1e-7)
+    # 학습률 스케줄 추가 (26.11.24)
+    scheduler = None
+    if args.scheduler == 'cosine':
+        warmup_epochs = min(5, max(1, args.epochs // 10))
+        if args.epochs > warmup_epochs:
+            warmup = torch.optim.lr_scheduler.LinearLR(
+                optimizer, start_factor=0.1, end_factor=1.0, total_iters=warmup_epochs
+            )
+            cosine = torch.optim.lr_scheduler.CosineAnnealingLR(
+                optimizer, T_max=args.epochs - warmup_epochs, eta_min=1e-6
+            )
+            scheduler = torch.optim.lr_scheduler.SequentialLR(
+                optimizer, schedulers=[warmup, cosine], milestones=[warmup_epochs]
+            )
+        else:
+            scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+                optimizer, T_max=max(1, args.epochs), eta_min=1e-6
+            )
+    
     best_loss, best_f1, stale = float('inf'), -1.0, 0
     with (output/'history.csv').open('w', newline='', encoding='utf-8-sig') as file:
         writer = csv.writer(file)
@@ -131,6 +162,10 @@ def main():
         for epoch in range(1, args.epochs+1):
             print(f'\nEpoch {epoch}/{args.epochs}', flush=True)
             training, _ = run_epoch(model, train_loader, criterion, device, args, optimizer)
+            # 학습 스케쥴러 추가(26.11.24)
+            if scheduler is not None:
+                scheduler.step()
+
             validation, metrics = run_epoch(model, val_loader, criterion, device, args)
             writer.writerow((epoch, training['total'], validation['total'],
                              validation['person'], validation['background'], validation['box'],
